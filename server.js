@@ -41,10 +41,12 @@ const manifest = {
 
 const builder = new addonBuilder(manifest);
 
+let dynamicBaseUrl = `http://127.0.0.1:${PORT}`;
+
 builder.defineSubtitlesHandler(async (args) => {
     console.log('\n--- (1) POŽADAVEK NA SEZNAM TITULKŮ ---');
     console.log('Přijata data od Stremia:', args.id);
-    console.log('Celé args:', JSON.stringify(args));
+    console.log('Základní URL (dynamicBaseUrl):', dynamicBaseUrl);
 
     if (!args.config || !args.config.username || !args.config.password) {
         console.log('Chybí konfigurace. Uživatel musí zadat jméno a heslo.');
@@ -78,7 +80,6 @@ builder.defineSubtitlesHandler(async (args) => {
         console.log('[KROK 3] HTML s výsledky obou jazyků přijato.');
 
         const subtitles = [];
-        const addonUrl = `http://127.0.0.1:${PORT}`;
 
         const processHtml = (html, langCode) => {
             if (!html) return;
@@ -96,7 +97,8 @@ builder.defineSubtitlesHandler(async (args) => {
                         subtitles.push({
                             id: detailUrl,
                             lang: langCode,
-                            url: `${addonUrl}/download/${encodeURIComponent(config.username)}/${encodeURIComponent(config.password)}/${encodeURIComponent(detailUrl)}`
+                            // Zde se používá dynamická adresa, ne hardcodované 127.0.0.1
+                            url: `${dynamicBaseUrl}/download/${encodeURIComponent(config.username)}/${encodeURIComponent(config.password)}/${encodeURIComponent(detailUrl)}`
                         });
                     }
                 }
@@ -115,6 +117,13 @@ builder.defineSubtitlesHandler(async (args) => {
 });
 
 const app = express();
+
+app.use((req, res, next) => {
+    // Zachycení aktuální domény (Beamup / Localhost) pro správné stahovací odkazy
+    const proto = req.headers['x-forwarded-proto'] || req.protocol;
+    dynamicBaseUrl = `${proto}://${req.get('host')}`;
+    next();
+});
 
 // Serve simple configuration page
 app.get('/configure', (req, res) => {
