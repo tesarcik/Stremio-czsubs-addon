@@ -119,6 +119,14 @@ builder.defineSubtitlesHandler(async (args) => {
 const app = express();
 
 app.use((req, res, next) => {
+    // Globální CORS hlavičky pro Stremio Web / Desktop aplikace
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+
     // Zachycení aktuální domény (Beamup / Localhost) pro správné stahovací odkazy
     const proto = req.headers['x-forwarded-proto'] || req.protocol;
     dynamicBaseUrl = `${proto}://${req.get('host')}`;
@@ -139,6 +147,11 @@ app.get('/', (req, res) => {
 app.get('/download/:username/:password/:detailUrl', async (req, res) => {
     console.log('\n--- (2) POŽADAVEK NA STAŽENÍ KONKRÉTNÍCH TITULKŮ ---');
     console.log('Požadovaný soubor:', decodeURIComponent(req.params.detailUrl));
+
+    // Přidání CORS hlaviček
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
 
     try {
         const userConfig = {
