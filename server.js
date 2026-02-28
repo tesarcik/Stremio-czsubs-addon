@@ -1,4 +1,4 @@
-const { addonBuilder, getRouter } = require('stremio-addon-sdk'); 
+const { addonBuilder, getRouter } = require('stremio-addon-sdk');
 const express = require('express');
 const path = require('path');
 const axios = require('axios');
@@ -7,10 +7,7 @@ const titulky = require('./titulky.js');
 
 const PORT = process.env.PORT || 7000;
 
-const myCredentials = {
-    username: "johndoe",
-    password: "password123"
-};
+// Removed hardcoded credentials
 
 const manifest = {
     id: 'com.titulky.stremio-addon.static-test',
@@ -20,9 +17,24 @@ const manifest = {
     logo: 'https://www.titulky.com/favicon-tecko.ico',
     resources: ['subtitles'],
     types: ['movie', 'series'],
-    catalogs: [],    
+    catalogs: [],
+    config: [
+        {
+            key: "username",
+            title: "Titulky.com Uživatelské jméno",
+            type: "text",
+            required: true
+        },
+        {
+            key: "password",
+            title: "Titulky.com Heslo",
+            type: "password",
+            required: true
+        }
+    ],
     behaviorHints: {
-        configurable: false
+        configurable: true,
+        configurationRequired: true
     }
 };
 
@@ -31,8 +43,12 @@ const builder = new addonBuilder(manifest);
 builder.defineSubtitlesHandler(async (args) => {
     console.log('\n--- (1) POŽADAVEK NA SEZNAM TITULKŮ ---');
     console.log('Přijata data od Stremia:', args.id);
-    
-    const config = myCredentials;
+
+    if (!args.config || !args.config.username || !args.config.password) {
+        console.log('Chybí konfigurace. Uživatel musí zadat jméno a heslo.');
+        return { subtitles: [] };
+    }
+    const config = { username: args.config.username, password: args.config.password };
     try {
         let movieName = '';
         const imdbId = args.id.split(':')[0];
@@ -70,11 +86,11 @@ builder.defineSubtitlesHandler(async (args) => {
                 subtitles.push({
                     id: detailUrl,
                     lang: lang,
-                    url: `${addonUrl}/download/${encodeURIComponent(detailUrl)}`
+                    url: `${addonUrl}/download/${encodeURIComponent(config.username)}/${encodeURIComponent(config.password)}/${encodeURIComponent(detailUrl)}`
                 });
             }
-        }); 
-        
+        });
+
         console.log(`[KROK 4] Nalezeno ${subtitles.length} titulků (po odfiltrování).`);
         return { subtitles };
     } catch (error) {
@@ -85,18 +101,27 @@ builder.defineSubtitlesHandler(async (args) => {
 
 const app = express();
 
+// Serve simple configuration page
+app.get('/configure', (req, res) => {
+    res.sendFile(path.join(__dirname, 'configure.html'));
+});
+
 // Endpoint
-app.get('/download/:detailUrl', async (req, res) => {
+app.get('/download/:username/:password/:detailUrl', async (req, res) => {
     console.log('\n--- (2) POŽADAVEK NA STAŽENÍ KONKRÉTNÍCH TITULKŮ ---');
     console.log('Požadovaný soubor:', decodeURIComponent(req.params.detailUrl));
-    
+
     try {
-        const cookies = await titulky.login(myCredentials);
+        const userConfig = {
+            username: decodeURIComponent(req.params.username),
+            password: decodeURIComponent(req.params.password)
+        };
+        const cookies = await titulky.login(userConfig);
         if (!cookies) { throw new Error('Přihlášení selhalo před stažením'); }
-        
+
         const subtitleStream = await titulky.getSubtitleStream(`https://www.titulky.com/${decodeURIComponent(req.params.detailUrl)}`, cookies);
         if (!subtitleStream) { throw new Error('Funkce getSubtitleStream nevrátila stream'); }
-        
+
         console.log('Streamuji titulky do Stremia...');
         res.setHeader('Content-Type', 'application/x-subrip');
         subtitleStream.pipe(res);

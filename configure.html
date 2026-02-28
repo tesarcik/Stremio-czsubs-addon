@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="cs">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nastavení Titulky.com Addonu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #fce4e4;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #d00;
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #d00;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #a00;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Titulky.com Addon</h1>
+        <p>Zadejte své přihlašovací údaje z portálu Titulky.com. Tyto údaje nebudou nikam ukládány, budou pouze součástí
+            odkazu, který addon používá ke stažení titulků v momentě, kdy si nějaké vyberete.</p>
+        <form id="configForm">
+            <label for="username">Uživatelské jméno</label>
+            <input type="text" id="username" placeholder="Např. pepos941" required>
+
+            <label for="password">Heslo</label>
+            <input type="password" id="password" required>
+
+            <button type="submit">Nainstalovat doplněk</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('configForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            // Decode the current URL path to get the base domain
+            const urlPath = window.location.pathname.replace('/configure', '');
+            const baseUrl = window.location.origin + urlPath;
+
+            // Format for Stremio: /username=x|password=y/manifest.json
+            const configString = `username=${encodeURIComponent(user)}|password=${encodeURIComponent(pass)}`;
+            const manifestUrl = `${baseUrl}/${configString}/manifest.json`;
+
+            // Redirect using the Stremio protocol
+            const stremioUrl = manifestUrl.replace('https://', 'stremio://').replace('http://', 'stremio://');
+            window.location.href = stremioUrl;
+        });
+    </script>
+</body>
+
+</html>

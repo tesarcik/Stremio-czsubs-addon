@@ -3,7 +3,7 @@
 const axios = require('axios');
 const querystring = require('querystring');
 const cheerio = require('cheerio');
-const fs = require('fs'); 
+const fs = require('fs');
 const path = require('path');
 
 const baseUrl = 'https://www.titulky.com/';
@@ -17,14 +17,14 @@ async function login(credentials) {
     console.log('[LOGIN] Zahajuji přihlášení...');
     try {
         const postData = querystring.stringify({
-            Login: credentials.username,    
+            Login: credentials.username,
             Password: credentials.password,
             prihlasit: 'Přihlásit',
-            foreverlog: '1' 
+            foreverlog: '1'
         });
         const response = await axios.post(baseUrl, postData, {
-            headers: { 
-                ...browserHeaders, 
+            headers: {
+                ...browserHeaders,
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
         });
@@ -45,9 +45,9 @@ async function searchForSubtitles(title, cookies) {
     try {
         const searchUrl = `${baseUrl}?Fulltext=${encodeURIComponent(title)}`;
         const response = await axios.get(searchUrl, {
-            headers: { 
-                ...browserHeaders, 
-                'Cookie': cookies.join('; ') 
+            headers: {
+                ...browserHeaders,
+                'Cookie': cookies.join('; ')
             }
         });
         console.log('[SEARCH] Vyhledávání úspěšné.');
@@ -61,15 +61,15 @@ async function searchForSubtitles(title, cookies) {
 async function getSubtitleStream(detailPageUrl, cookies) {
     console.log(`[DOWNLOAD] Zahajuji proces stahování z: ${detailPageUrl}`);
     try {
-        const baseHeaders = { 
-            ...browserHeaders, 
-            'Cookie': cookies.join('; '), 
-            'Referer': baseUrl 
+        const baseHeaders = {
+            ...browserHeaders,
+            'Cookie': cookies.join('; '),
+            'Referer': baseUrl
         };
-        
+
         console.log('[Krok 1] Stahuji hlavní stránku detailu...');
         const detailResponse = await axios.get(detailPageUrl, { headers: baseHeaders });
-        const pageHtml = detailResponse.data; 
+        const pageHtml = detailResponse.data;
         let $ = cheerio.load(pageHtml);
 
         let intermediaryUrl = '';
@@ -87,13 +87,13 @@ async function getSubtitleStream(detailPageUrl, cookies) {
         console.log(`[Krok 3] Stahuji mezistránku: ${intermediaryUrl}`);
         const intermediaryHeaders = { ...baseHeaders, 'Referer': detailPageUrl };
         const intermediaryResponse = await axios.get(intermediaryUrl, { headers: intermediaryHeaders });
-        
+
         const intermediaryHtml = intermediaryResponse.data;
         $ = cheerio.load(intermediaryHtml);
 
         console.log('[Krok 4] Hledám formulář [name="download"] (Typ 1)...');
         const downloadForm = $('form[name="download"]');
-        
+
         if (downloadForm.length > 0) {
             console.log('[Krok 4] Nalezen formulář (Typ 1). Zpracovávám...');
 
@@ -106,14 +106,14 @@ async function getSubtitleStream(detailPageUrl, cookies) {
             });
             if (!actionUrl || Object.keys(inputs).length === 0) throw new Error('Formulář (Typ 1) je nekompletní.');
             const downloadPostData = querystring.stringify(inputs);
-            const downloadUrl = `${baseUrl}${actionUrl}`; 
-            const timer = 5000; 
+            const downloadUrl = `${baseUrl}${actionUrl}`;
+            const timer = 5000;
             console.log(`[Krok 5] Čekám ${timer / 1000}s (simulace časovače)...`);
             await delay(timer);
             console.log(`[Krok 6] Posílám finální POST požadavek na: ${downloadUrl}`);
             const fileResponse = await axios.post(downloadUrl, downloadPostData, {
                 headers: { ...baseHeaders, 'Content-Type': 'application/x-www-form-urlencoded', 'Referer': intermediaryUrl },
-                responseType: 'stream' 
+                responseType: 'stream'
             });
             if (fileResponse.status === 200 && fileResponse.headers['content-disposition']) {
                 console.log('[DOWNLOAD] Úspěšně získáno (Typ 1), vracím stream...');
@@ -129,9 +129,17 @@ async function getSubtitleStream(detailPageUrl, cookies) {
 
             if (match && match[1]) {
                 console.log('[Krok 4] Nalezen finální odkaz (Typ 2) pomocí Regex.');
-                const finalHref = match[1];
+                let finalHref = match[1];
+                if (finalHref.startsWith('/')) {
+                    finalHref = finalHref.substring(1);
+                }
                 const finalDownloadUrl = `${baseUrl}${finalHref}`;
-                console.log(`[Krok 5] Není třeba čekat. Stahuji přímo z: ${finalDownloadUrl}`);
+
+                const timer = 5000;
+                console.log(`[Krok 5] Čekám ${timer / 1000}s (časovač typu 2)...`);
+                await delay(timer);
+
+                console.log(`[Krok 6] Stahuji finální soubor z: ${finalDownloadUrl}`);
                 const fileResponse = await axios.get(finalDownloadUrl, {
                     headers: { ...baseHeaders, 'Referer': intermediaryUrl },
                     responseType: 'stream'
@@ -140,6 +148,8 @@ async function getSubtitleStream(detailPageUrl, cookies) {
                     console.log('[DOWNLOAD] Úspěšně získáno (Typ 2), vracím stream...');
                     return fileResponse.data;
                 } else {
+                    console.log('[DEBUG] Status:', fileResponse.status);
+                    console.log('[DEBUG] Headers:', fileResponse.headers);
                     throw new Error('Finální odpověď serveru (Typ 2) neobsahovala soubor.');
                 }
             } else {
