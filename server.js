@@ -8,8 +8,6 @@ const titulky = require('./titulky.js');
 
 const PORT = process.env.PORT || 7000;
 
-// Removed hardcoded credentials
-
 const manifest = {
     id: 'com.titulky.stremio-addon.static-test',
     version: '1.0.1',
@@ -92,12 +90,10 @@ builder.defineSubtitlesHandler(async (args) => {
                     const linkText = linkElement.text().toLowerCase().trim();
                     const titleSimple = searchQuery.toLowerCase().trim();
 
-                    // Mírná validace shody se jménem (např. 'steal')
                     if (linkText.includes(titleSimple.split(' ')[0])) {
                         subtitles.push({
                             id: detailUrl,
                             lang: langCode,
-                            // Zde se používá dynamická adresa, ne hardcodované 127.0.0.1
                             url: `${dynamicBaseUrl}/download/${encodeURIComponent(config.username)}/${encodeURIComponent(config.password)}/${encodeURIComponent(detailUrl)}`
                         });
                     }
@@ -119,7 +115,6 @@ builder.defineSubtitlesHandler(async (args) => {
 const app = express();
 
 app.use((req, res, next) => {
-    // Globální CORS hlavičky pro Stremio Web / Desktop aplikace
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
@@ -127,28 +122,32 @@ app.use((req, res, next) => {
         return res.status(200).end();
     }
 
-    // Zachycení aktuální domény (Beamup / Localhost) pro správné stahovací odkazy
+    // --- OPRAVA PRO BEAMUP ---
+    const host = req.get('host');
     const proto = req.headers['x-forwarded-proto'] || req.protocol;
-    dynamicBaseUrl = `${proto}://${req.get('host')}`;
+
+    // Pokud hostitel obsahuje "baby-beamup.club", použijeme ho. 
+    // Pokud je to to divné ID "a5911...", přepíšeme ho na správnou subdoménu.
+    if (host.includes('baby-beamup.club') || host.includes('a5911a1ceea0')) {
+        dynamicBaseUrl = `${proto}://a5911a1ceea0-stremio-premium-czsubs.baby-beamup.club`;
+    } else {
+        dynamicBaseUrl = `${proto}://${host}`;
+    }
+    // -------------------------
+
     next();
 });
 
-// Serve simple configuration page
 app.get('/configure', (req, res) => {
     res.sendFile(path.join(__dirname, 'configure.html'));
 });
 
-// Redirect root to configure
 app.get('/', (req, res) => {
     res.redirect('/configure');
 });
 
-// Endpoint
 app.get('/download/:username/:password/:detailUrl', async (req, res) => {
     console.log('\n--- (2) POŽADAVEK NA STAŽENÍ KONKRÉTNÍCH TITULKŮ ---');
-    console.log('Požadovaný soubor:', decodeURIComponent(req.params.detailUrl));
-
-    // Přidání CORS hlaviček
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
@@ -164,7 +163,6 @@ app.get('/download/:username/:password/:detailUrl', async (req, res) => {
         const subtitleStream = await titulky.getSubtitleStream(decodeURIComponent(req.params.detailUrl), cookies);
         if (!subtitleStream) { throw new Error('Funkce getSubtitleStream nevrátila stream'); }
 
-        console.log('Rozbaluji a streamuji titulky do Stremia...');
         res.setHeader('Content-Type', 'application/x-subrip');
 
         let subtitleFound = false;
@@ -173,7 +171,6 @@ app.get('/download/:username/:password/:detailUrl', async (req, res) => {
                 const fileName = entry.path;
                 const type = entry.type;
                 if (!subtitleFound && type === 'File' && (fileName.endsWith('.srt') || fileName.endsWith('.sub') || fileName.endsWith('.txt'))) {
-                    console.log('Nalezen soubor titulků v zipu:', fileName);
                     subtitleFound = true;
                     entry.pipe(res);
                 } else {
@@ -181,11 +178,9 @@ app.get('/download/:username/:password/:detailUrl', async (req, res) => {
                 }
             })
             .on('error', (err) => {
-                console.error('Chyba při rozbalování ZIPu:', err);
                 if (!res.headersSent) res.status(500).send('Chyba při rozbalování ZIPu');
             });
     } catch (e) {
-        console.error('!!! CHYBA PŘI STAHOVÁNÍ !!!', e.message);
         res.status(500).send('Chyba na straně serveru');
     }
 });
@@ -194,6 +189,5 @@ const router = getRouter(builder.getInterface());
 app.use(router);
 
 app.listen(PORT, () => {
-    console.log(`Server běží! Nainstalujte doplněk do Stremia pomocí adresy:`);
-    console.log(`http://127.0.0.1:${PORT}/manifest.json`);
+    console.log(`Server běží na portu ${PORT}`);
 });
