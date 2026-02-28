@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const unzipper = require('unzipper');
 const titulky = require('./titulky.js');
 
 const PORT = process.env.PORT || 7000;
@@ -52,45 +53,58 @@ builder.defineSubtitlesHandler(async (args) => {
     const config = { username: args.config.username, password: args.config.password };
     try {
         let movieName = '';
-        const imdbId = args.id.split(':')[0];
+        const [imdbId, season, episode] = args.id.split(':');
         const metaUrl = `https://cinemeta-live.strem.io/meta/${args.type}/${imdbId}.json`;
         console.log(`[KROK 1] Získávám název z: ${metaUrl}`);
         const response = await axios.get(metaUrl);
         movieName = response.data.meta.name;
-        console.log(`[KROK 1] Název získán: "${movieName}"`);
 
-        console.log('[KROK 2] Přihlašuji se na titulky.com...');
+        let searchQuery = movieName;
+        if (season && episode) {
+            searchQuery = `${movieName} S${season.padStart(2, '0')}E${episode.padStart(2, '0')}`;
+        }
+        console.log(`[KROK 1] Vyhledávací dotaz: "${searchQuery}"`);
+
+        console.log('[KROK 2] Přihlašuji se na prémiové titulky.com...');
         const cookies = await titulky.login(config);
-        if (!cookies) { throw new Error('Přihlášení na titulky.com selhalo'); }
+        if (!cookies) { throw new Error('Přihlášení selhalo'); }
         console.log('[KROK 2] Přihlášení úspěšné.');
 
-        console.log('[KROK 3] Hledám titulky pro film...');
-        const searchHtml = await titulky.searchForSubtitles(movieName, cookies);
-        if (!searchHtml) { throw new Error('Vyhledávání titulků selhalo'); }
-        console.log('[KROK 3] HTML s výsledky přijato.');
+        console.log('[KROK 3] Hledám titulky pro film (CZ i SK)...');
+        const [searchHtmlCZ, searchHtmlSK] = await Promise.all([
+            titulky.searchForSubtitles(searchQuery, 'CZ', cookies),
+            titulky.searchForSubtitles(searchQuery, 'SK', cookies)
+        ]);
+        console.log('[KROK 3] HTML s výsledky obou jazyků přijato.');
 
-        const $ = cheerio.load(searchHtml);
         const subtitles = [];
         const addonUrl = `http://127.0.0.1:${PORT}`;
 
-        $('table.soupis tr').each((i, el) => {
-            const row = $(el);
-            const linkElement = row.find('td:first-child a');
-            const langElement = row.find('td img[alt="CZ"], td img[alt="SK"]');
-            const linkText = linkElement.text().toLowerCase().trim();
-            const movieNameSimple = movieName.toLowerCase().trim();
+        const processHtml = (html, langCode) => {
+            if (!html) return;
+            const $ = cheerio.load(html);
+            $('table.table-hover tbody tr').each((i, el) => {
+                const row = $(el);
+                const linkElement = row.find('td:nth-child(2) a');
+                if (linkElement.length > 0) {
+                    const detailUrl = linkElement.attr('href');
+                    const linkText = linkElement.text().toLowerCase().trim();
+                    const titleSimple = searchQuery.toLowerCase().trim();
 
-            if (linkElement.length > 0 && langElement.length > 0 && linkText.startsWith(movieNameSimple)) {
-                const detailUrl = linkElement.attr('href');
-                const lang = langElement.attr('alt').toLowerCase() === 'cz' ? 'ces' : 'slk';
+                    // Mírná validace shody se jménem (např. 'steal')
+                    if (linkText.includes(titleSimple.split(' ')[0])) {
+                        subtitles.push({
+                            id: detailUrl,
+                            lang: langCode,
+                            url: `${addonUrl}/download/${encodeURIComponent(config.username)}/${encodeURIComponent(config.password)}/${encodeURIComponent(detailUrl)}`
+                        });
+                    }
+                }
+            });
+        };
 
-                subtitles.push({
-                    id: detailUrl,
-                    lang: lang,
-                    url: `${addonUrl}/download/${encodeURIComponent(config.username)}/${encodeURIComponent(config.password)}/${encodeURIComponent(detailUrl)}`
-                });
-            }
-        });
+        processHtml(searchHtmlCZ, 'ces');
+        processHtml(searchHtmlSK, 'slk');
 
         console.log(`[KROK 4] Nalezeno ${subtitles.length} titulků (po odfiltrování).`);
         return { subtitles };
@@ -107,6 +121,11 @@ app.get('/configure', (req, res) => {
     res.sendFile(path.join(__dirname, 'configure.html'));
 });
 
+// Redirect root to configure
+app.get('/', (req, res) => {
+    res.redirect('/configure');
+});
+
 // Endpoint
 app.get('/download/:username/:password/:detailUrl', async (req, res) => {
     console.log('\n--- (2) POŽADAVEK NA STAŽENÍ KONKRÉTNÍCH TITULKŮ ---');
@@ -120,12 +139,29 @@ app.get('/download/:username/:password/:detailUrl', async (req, res) => {
         const cookies = await titulky.login(userConfig);
         if (!cookies) { throw new Error('Přihlášení selhalo před stažením'); }
 
-        const subtitleStream = await titulky.getSubtitleStream(`https://www.titulky.com/${decodeURIComponent(req.params.detailUrl)}`, cookies);
+        const subtitleStream = await titulky.getSubtitleStream(decodeURIComponent(req.params.detailUrl), cookies);
         if (!subtitleStream) { throw new Error('Funkce getSubtitleStream nevrátila stream'); }
 
-        console.log('Streamuji titulky do Stremia...');
+        console.log('Rozbaluji a streamuji titulky do Stremia...');
         res.setHeader('Content-Type', 'application/x-subrip');
-        subtitleStream.pipe(res);
+
+        let subtitleFound = false;
+        subtitleStream.pipe(unzipper.Parse())
+            .on('entry', function (entry) {
+                const fileName = entry.path;
+                const type = entry.type;
+                if (!subtitleFound && type === 'File' && (fileName.endsWith('.srt') || fileName.endsWith('.sub') || fileName.endsWith('.txt'))) {
+                    console.log('Nalezen soubor titulků v zipu:', fileName);
+                    subtitleFound = true;
+                    entry.pipe(res);
+                } else {
+                    entry.autodrain();
+                }
+            })
+            .on('error', (err) => {
+                console.error('Chyba při rozbalování ZIPu:', err);
+                if (!res.headersSent) res.status(500).send('Chyba při rozbalování ZIPu');
+            });
     } catch (e) {
         console.error('!!! CHYBA PŘI STAHOVÁNÍ !!!', e.message);
         res.status(500).send('Chyba na straně serveru');
