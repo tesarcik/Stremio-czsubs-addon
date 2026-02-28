@@ -42,12 +42,8 @@ const builder = new addonBuilder(manifest);
 let dynamicBaseUrl = `http://127.0.0.1:${PORT}`;
 
 builder.defineSubtitlesHandler(async (args) => {
-    console.log('\n--- (1) POŽADAVEK NA SEZNAM TITULKŮ ---');
-    console.log('Přijata data od Stremia:', args.id);
-    console.log('Základní URL (dynamicBaseUrl):', dynamicBaseUrl);
 
     if (!args.config || !args.config.username || !args.config.password) {
-        console.log('Chybí konfigurace. Uživatel musí zadat jméno a heslo.');
         return { subtitles: [] };
     }
     const config = { username: args.config.username, password: args.config.password };
@@ -55,7 +51,6 @@ builder.defineSubtitlesHandler(async (args) => {
         let movieName = '';
         const [imdbId, season, episode] = args.id.split(':');
         const metaUrl = `https://cinemeta-live.strem.io/meta/${args.type}/${imdbId}.json`;
-        console.log(`[KROK 1] Získávám název z: ${metaUrl}`);
         const response = await axios.get(metaUrl);
         movieName = response.data.meta.name;
 
@@ -63,19 +58,14 @@ builder.defineSubtitlesHandler(async (args) => {
         if (season && episode) {
             searchQuery = `${movieName} S${season.padStart(2, '0')}E${episode.padStart(2, '0')}`;
         }
-        console.log(`[KROK 1] Vyhledávací dotaz: "${searchQuery}"`);
 
-        console.log('[KROK 2] Přihlašuji se na prémiové titulky.com...');
         const cookies = await titulky.login(config);
         if (!cookies) { throw new Error('Přihlášení selhalo'); }
-        console.log('[KROK 2] Přihlášení úspěšné.');
 
-        console.log('[KROK 3] Hledám titulky pro film (CZ i SK)...');
         const [searchHtmlCZ, searchHtmlSK] = await Promise.all([
             titulky.searchForSubtitles(searchQuery, 'CZ', cookies),
             titulky.searchForSubtitles(searchQuery, 'SK', cookies)
         ]);
-        console.log('[KROK 3] HTML s výsledky obou jazyků přijato.');
 
         const subtitles = [];
 
@@ -104,7 +94,6 @@ builder.defineSubtitlesHandler(async (args) => {
         processHtml(searchHtmlCZ, 'ces');
         processHtml(searchHtmlSK, 'slk');
 
-        console.log(`[KROK 4] Nalezeno ${subtitles.length} titulků (po odfiltrování).`);
         return { subtitles };
     } catch (error) {
         console.error('!!! CHYBA V SUBTITLES HANDLERU !!!', error.message);
@@ -124,20 +113,16 @@ app.use((req, res, next) => {
         return res.status(200).end();
     }
 
-    // --- OPRAVA PRO BEAMUP ---
     const host = req.get('host');
     const proto = req.headers['x-forwarded-proto'] || req.protocol;
 
-    // Tady natvrdo definujeme TVOU správnou veřejnou adresu
     const beamupHost = 'a5911a1ceea0-stremio-premium-czsubs.baby-beamup.club';
 
     if (host.includes('baby-beamup.club') || host.includes('a5911a1ceea0')) {
-        // Tady MUSÍ být celá adresa i s tou koncovkou .club
         dynamicBaseUrl = `https://${beamupHost}`;
     } else {
         dynamicBaseUrl = `${proto}://${host}`;
     }
-    // -------------------------
 
     next();
 });
@@ -151,7 +136,6 @@ app.get('/', (req, res) => {
 });
 
 app.get('/download/:username/:password/:detailUrl', async (req, res) => {
-    console.log('\n--- (2) POŽADAVEK NA STAŽENÍ KONKRÉTNÍCH TITULKŮ ---');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');

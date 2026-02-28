@@ -13,7 +13,6 @@ const browserHeaders = {
 };
 
 async function login(credentials) {
-    console.log('[LOGIN] Zahajuji přihlášení na premium server...');
     try {
         const postData = querystring.stringify({
             LoginName: credentials.username,
@@ -30,7 +29,6 @@ async function login(credentials) {
         });
 
         if (response.headers['set-cookie']) {
-            console.log('[LOGIN] Přihlášení úspěšné.');
             return response.headers['set-cookie'];
         }
         throw new Error('Server nevrátil cookies.');
@@ -41,7 +39,6 @@ async function login(credentials) {
 }
 
 async function searchForSubtitles(title, langFilter, cookies) {
-    console.log(`[SEARCH] Zahajuji vyhledávání pro: "${title}" (Jazyk: ${langFilter})`);
     try {
         const searchUrl = `${baseUrl}?action=search&Fulltext=${encodeURIComponent(title)}&Jazyk=${langFilter}`;
         const response = await axios.get(searchUrl, {
@@ -50,7 +47,6 @@ async function searchForSubtitles(title, langFilter, cookies) {
                 'Cookie': cookies.join('; ')
             }
         });
-        console.log('[SEARCH] Vyhledávání úspěšné.');
         return response.data;
     } catch (error) {
         console.error('[SEARCH] CHYBA:', error.message);
@@ -59,7 +55,6 @@ async function searchForSubtitles(title, langFilter, cookies) {
 }
 
 async function getSubtitleStream(detailPageUrl, cookies) {
-    console.log(`[DOWNLOAD] Převádím ${detailPageUrl} na přímé stažení ZIPu...`);
     try {
         let urlToCheck = detailPageUrl;
         if (!urlToCheck.startsWith('http')) {
@@ -72,7 +67,6 @@ async function getSubtitleStream(detailPageUrl, cookies) {
         if (!id) throw new Error('Nedokážu najít ID v odkazu detailu titulků');
 
         const downloadUrl = `${baseUrl}download.php?id=${id}`;
-        console.log(`[Krok 1] Stahuji ZIP archiv z: ${downloadUrl}`);
 
         const baseHeaders = {
             ...browserHeaders,
@@ -88,10 +82,8 @@ async function getSubtitleStream(detailPageUrl, cookies) {
         });
 
         if (fileResponse.headers['content-type'] && fileResponse.headers['content-type'].includes('zip')) {
-            console.log('[DOWNLOAD] Úspěšně získáno (ZIP), vracím stream...');
             return fileResponse.data;
         } else {
-            console.log("[DOWNLOAD DEBUG] Status:", fileResponse.status, "Content-Type:", fileResponse.headers['content-type']);
             throw new Error('Finální odpověď serveru nebyla ZIP soubor (např. chyba prémiového limitu?).');
         }
     } catch (error) {

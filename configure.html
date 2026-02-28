@@ -101,6 +101,9 @@
             let manifestUrl = `${protocol}//${host}${urlPath}/${configString}/manifest.json`;
             manifestUrl = manifestUrl.replace(/([^:])\/\//g, '$1/');
 
+            const stremioUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
+            window.location.href = stremioUrl;
+
             // Create a result div
             let resultDiv = document.getElementById('result');
             if (!resultDiv) {
@@ -115,10 +118,12 @@
             }
 
             resultDiv.innerHTML = `
-                <p style="color: #333; font-weight: bold; margin-bottom: 5px;">Úspěch! Zkopírujte tento odkaz:</p>
-                <input type="text" value="${manifestUrl}" id="manifestLink" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" readonly>
-                <p style="color: #666; font-size: 13px; margin-top: 10px;">Otevřete aplikaci <b>Stremio</b>, přejděte do sekce <b>Addons</b> a do vyhledávacího pole (Addon URL) vložte tento odkaz k instalaci doplňku.</p>
-                <button type="button" onclick="document.getElementById('manifestLink').select(); document.execCommand('copy'); alert('Zkopírováno do schránky!');" style="width: 100%; padding: 10px; margin-top: 10px; background-color: #555; color: white; border: none; border-radius: 4px; cursor: pointer;">Kopírovat odkaz</button>
+                <p style="color: #333; font-weight: bold; margin-bottom: 5px;">Otevírám aplikaci Stremio...</p>
+                <p style="color: #666; font-size: 13px; margin-top: 10px;">Pokud se aplikace neotevřela automaticky, můžete kopírovat odkaz ručně níže nebo kliknout na tlačítko:</p>
+                <a href="${stremioUrl}" style="display: block; text-align: center; width: 100%; box-sizing: border-box; padding: 12px; margin-top: 10px; background-color: #555; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">Otevřít ve Stremiu</a>
+                
+                <input type="text" value="${manifestUrl}" id="manifestLink" style="width: 100%; padding: 8px; margin-top: 15px; border: 1px solid #ccc; border-radius: 4px;" readonly>
+                <button type="button" onclick="document.getElementById('manifestLink').select(); document.execCommand('copy'); alert('Zkopírováno do schránky!');" style="width: 100%; padding: 10px; margin-top: 5px; background-color: #777; color: white; border: none; border-radius: 4px; cursor: pointer;">Kopírovat odkaz</button>
             `;
         });
     </script>

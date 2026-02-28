@@ -1,6 +1,5 @@
 # WIP  🚧
 Still in development...
-Currently debugging downloading of subs
 
 # Titulky.com Addon for Stremio
 
