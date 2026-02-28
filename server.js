@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 7000;
 const manifest = {
     id: 'com.titulky.stremio-addon.v1.0.0',
     version: '1.0.0',
-    name: 'Titulky.com',
+    name: 'Premium Titulky.com',
     description: 'Vyhledávání českých a slovenských titulků na serveru premium.titulky.com.',
     logo: '/media/logo_t.png',
     resources: ['subtitles'],
