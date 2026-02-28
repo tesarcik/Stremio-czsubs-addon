@@ -1,199 +1,96 @@
+// server.js
 const { addonBuilder, getRouter } = require('stremio-addon-sdk');
 const express = require('express');
-const path = require('path');
+const unzipper = require('unzipper');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const unzipper = require('unzipper');
 const titulky = require('./titulky.js');
 
 const PORT = process.env.PORT || 7000;
 
-// Removed hardcoded credentials
+// SEM DOPLŇ SVOJI ADRESU, KTEROU TI DAL BEAMUP
+const PUBLIC_URL = 'https://a5911a1ceea0-stremio-premium-czsubs.baby-beamup.club';
 
 const manifest = {
-    id: 'com.titulky.stremio-addon.static-test',
-    version: '1.0.1',
-    name: 'Titulky.com (Testovací verze)',
-    description: 'Vyhledávání českých a slovenských titulků na serveru Titulky.com.',
-    logo: 'https://www.titulky.com/favicon-tecko.ico',
+    id: 'com.titulky.stremio-premium',
+    version: '1.0.2',
+    name: 'Titulky.com Premium',
     resources: ['subtitles'],
     types: ['movie', 'series'],
-    catalogs: [],
     config: [
-        {
-            key: "username",
-            title: "Titulky.com Uživatelské jméno",
-            type: "text",
-            required: true
-        },
-        {
-            key: "password",
-            title: "Titulky.com Heslo",
-            type: "password",
-            required: true
-        }
+        { key: "username", title: "Uživatelské jméno", type: "text", required: true },
+        { key: "password", title: "Heslo", type: "password", required: true }
     ],
-    behaviorHints: {
-        configurable: true,
-        configurationRequired: true
-    }
+    behaviorHints: { configurable: true, configurationRequired: true }
 };
 
 const builder = new addonBuilder(manifest);
 
-let dynamicBaseUrl = `http://127.0.0.1:${PORT}`;
-
 builder.defineSubtitlesHandler(async (args) => {
-    console.log('\n--- (1) POŽADAVEK NA SEZNAM TITULKŮ ---');
-    console.log('Přijata data od Stremia:', args.id);
-    console.log('Základní URL (dynamicBaseUrl):', dynamicBaseUrl);
-
-    if (!args.config || !args.config.username || !args.config.password) {
-        console.log('Chybí konfigurace. Uživatel musí zadat jméno a heslo.');
-        return { subtitles: [] };
-    }
+    if (!args.config?.username || !args.config?.password) return { subtitles: [] };
     const config = { username: args.config.username, password: args.config.password };
+
     try {
-        let movieName = '';
         const [imdbId, season, episode] = args.id.split(':');
-        const metaUrl = `https://cinemeta-live.strem.io/meta/${args.type}/${imdbId}.json`;
-        console.log(`[KROK 1] Získávám název z: ${metaUrl}`);
-        const response = await axios.get(metaUrl);
-        movieName = response.data.meta.name;
+        const meta = await axios.get(`https://cinemeta-live.strem.io/meta/${args.type}/${imdbId}.json`);
+        let query = meta.data.meta.name;
+        if (season && episode) query += ` S${season.padStart(2, '0')}E${episode.padStart(2, '0')}`;
 
-        let searchQuery = movieName;
-        if (season && episode) {
-            searchQuery = `${movieName} S${season.padStart(2, '0')}E${episode.padStart(2, '0')}`;
-        }
-        console.log(`[KROK 1] Vyhledávací dotaz: "${searchQuery}"`);
-
-        console.log('[KROK 2] Přihlašuji se na prémiové titulky.com...');
         const cookies = await titulky.login(config);
-        if (!cookies) { throw new Error('Přihlášení selhalo'); }
-        console.log('[KROK 2] Přihlášení úspěšné.');
-
-        console.log('[KROK 3] Hledám titulky pro film (CZ i SK)...');
-        const [searchHtmlCZ, searchHtmlSK] = await Promise.all([
-            titulky.searchForSubtitles(searchQuery, 'CZ', cookies),
-            titulky.searchForSubtitles(searchQuery, 'SK', cookies)
-        ]);
-        console.log('[KROK 3] HTML s výsledky obou jazyků přijato.');
+        const searchHtml = await titulky.searchForSubtitles(query, 'CZ', cookies);
 
         const subtitles = [];
+        const $ = cheerio.load(searchHtml);
 
-        const processHtml = (html, langCode) => {
-            if (!html) return;
-            const $ = cheerio.load(html);
-            $('table.table-hover tbody tr').each((i, el) => {
-                const row = $(el);
-                const linkElement = row.find('td:nth-child(2) a');
-                if (linkElement.length > 0) {
-                    const detailUrl = linkElement.attr('href');
-                    const linkText = linkElement.text().toLowerCase().trim();
-                    const titleSimple = searchQuery.toLowerCase().trim();
+        $('table.table-hover tbody tr').each((i, el) => {
+            const detailUrl = $(el).find('td:nth-child(2) a').attr('href');
+            if (detailUrl) {
+                subtitles.push({
+                    id: detailUrl,
+                    lang: 'ces',
+                    // TADY POUŽÍVÁME PEVNOU VEŘEJNOU URL
+                    url: `${PUBLIC_URL}/download/${encodeURIComponent(config.username)}/${encodeURIComponent(config.password)}/${encodeURIComponent(detailUrl)}`
+                });
+            }
+        });
 
-                    // Mírná validace shody se jménem (např. 'steal')
-                    if (linkText.includes(titleSimple.split(' ')[0])) {
-                        subtitles.push({
-                            id: detailUrl,
-                            lang: langCode,
-                            // Zde se používá dynamická adresa, ne hardcodované 127.0.0.1
-                            url: `${dynamicBaseUrl}/download/${encodeURIComponent(config.username)}/${encodeURIComponent(config.password)}/${encodeURIComponent(detailUrl)}`
-                        });
-                    }
-                }
-            });
-        };
-
-        processHtml(searchHtmlCZ, 'ces');
-        processHtml(searchHtmlSK, 'slk');
-
-        console.log(`[KROK 4] Nalezeno ${subtitles.length} titulků (po odfiltrování).`);
         return { subtitles };
-    } catch (error) {
-        console.error('!!! CHYBA V SUBTITLES HANDLERU !!!', error.message);
+    } catch (e) {
         return { subtitles: [] };
     }
 });
 
 const app = express();
 
+// CORS HLAVIČKY - DŮLEŽITÉ PRO PROHLÍŽEČ
 app.use((req, res, next) => {
-    // Globální CORS hlavičky pro Stremio Web / Desktop aplikace
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
-    // Zachycení aktuální domény (Beamup / Localhost) pro správné stahovací odkazy
-    const proto = req.headers['x-forwarded-proto'] || req.protocol;
-    dynamicBaseUrl = `${proto}://${req.get('host')}`;
+    res.header('Access-Control-Allow-Headers', '*');
     next();
 });
 
-// Serve simple configuration page
-app.get('/configure', (req, res) => {
-    res.sendFile(path.join(__dirname, 'configure.html'));
-});
-
-// Redirect root to configure
-app.get('/', (req, res) => {
-    res.redirect('/configure');
-});
-
-// Endpoint
 app.get('/download/:username/:password/:detailUrl', async (req, res) => {
-    console.log('\n--- (2) POŽADAVEK NA STAŽENÍ KONKRÉTNÍCH TITULKŮ ---');
-    console.log('Požadovaný soubor:', decodeURIComponent(req.params.detailUrl));
-
-    // Přidání CORS hlaviček
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-
     try {
-        const userConfig = {
+        const cookies = await titulky.login({
             username: decodeURIComponent(req.params.username),
             password: decodeURIComponent(req.params.password)
-        };
-        const cookies = await titulky.login(userConfig);
-        if (!cookies) { throw new Error('Přihlášení selhalo před stažením'); }
+        });
+        const stream = await titulky.getSubtitleStream(decodeURIComponent(req.params.detailUrl), cookies);
 
-        const subtitleStream = await titulky.getSubtitleStream(decodeURIComponent(req.params.detailUrl), cookies);
-        if (!subtitleStream) { throw new Error('Funkce getSubtitleStream nevrátila stream'); }
+        res.setHeader('Content-Type', 'text/vtt'); // Stremio má rádo VTT/SRT
 
-        console.log('Rozbaluji a streamuji titulky do Stremia...');
-        res.setHeader('Content-Type', 'application/x-subrip');
-
-        let subtitleFound = false;
-        subtitleStream.pipe(unzipper.Parse())
-            .on('entry', function (entry) {
-                const fileName = entry.path;
-                const type = entry.type;
-                if (!subtitleFound && type === 'File' && (fileName.endsWith('.srt') || fileName.endsWith('.sub') || fileName.endsWith('.txt'))) {
-                    console.log('Nalezen soubor titulků v zipu:', fileName);
-                    subtitleFound = true;
+        stream.pipe(unzipper.Parse())
+            .on('entry', entry => {
+                if (entry.path.endsWith('.srt') || entry.path.endsWith('.sub')) {
                     entry.pipe(res);
                 } else {
                     entry.autodrain();
                 }
-            })
-            .on('error', (err) => {
-                console.error('Chyba při rozbalování ZIPu:', err);
-                if (!res.headersSent) res.status(500).send('Chyba při rozbalování ZIPu');
             });
     } catch (e) {
-        console.error('!!! CHYBA PŘI STAHOVÁNÍ !!!', e.message);
-        res.status(500).send('Chyba na straně serveru');
+        res.status(500).end();
     }
 });
 
-const router = getRouter(builder.getInterface());
-app.use(router);
-
-app.listen(PORT, () => {
-    console.log(`Server běží! Nainstalujte doplněk do Stremia pomocí adresy:`);
-    console.log(`http://127.0.0.1:${PORT}/manifest.json`);
-});
+app.use(getRouter(builder.getInterface()));
+app.listen(PORT);
