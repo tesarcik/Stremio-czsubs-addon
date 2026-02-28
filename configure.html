@@ -90,7 +90,8 @@
             const urlPath = window.location.pathname.replace('/configure', '');
 
             // Format for Stremio MUST be URL-encoded JSON object
-            const configObj = { username: user, password: pass };
+            // Pridano nahodne cislo do konfigurace, aby se obesla agresivni cache Stremia (URL bude pokazde jina)
+            const configObj = { username: user, password: pass, cb: Date.now() };
             const configString = encodeURIComponent(JSON.stringify(configObj));
 
             // Build the URL carefully
