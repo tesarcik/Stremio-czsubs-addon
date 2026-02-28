@@ -86,17 +86,13 @@
             e.preventDefault();
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
-            // Decode the current URL path to get the base domain
-            const urlPath = window.location.pathname.replace('/configure', '');
 
-            // Format for Stremio MUST be URL-encoded JSON object
-            // Pridano nahodne cislo do konfigurace, aby se obesla agresivni cache Stremia (URL bude pokazde jina)
+            const urlPath = window.location.pathname.replace('/configure', '');
             const configObj = { username: user, password: pass, cb: Date.now() };
             const configString = encodeURIComponent(JSON.stringify(configObj));
 
-            // Build the URL carefully
-            const host = window.location.host; // includes port
-            const protocol = window.location.protocol; // http:
+            const host = window.location.host;
+            const protocol = window.location.protocol;
 
             let manifestUrl = `${protocol}//${host}${urlPath}/${configString}/manifest.json`;
             manifestUrl = manifestUrl.replace(/([^:])\/\//g, '$1/');
@@ -104,7 +100,6 @@
             const stremioUrl = manifestUrl.replace(/^https?:\/\//, 'stremio://');
             window.location.href = stremioUrl;
 
-            // Create a result div
             let resultDiv = document.getElementById('result');
             if (!resultDiv) {
                 resultDiv = document.createElement('div');
