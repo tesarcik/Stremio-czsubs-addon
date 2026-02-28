@@ -1,5 +1,4 @@
-# WIP  🚧
-Still in development...
+
 
 # Titulky.com Addon for Stremio
 
@@ -13,6 +12,15 @@ A simple Stremio addon that integrates subtitle streaming from the popular Czech
 * Supports both Czech and Slovak subtitles.
 * Easy web-based configuration.
 
+
+## Instalace 🚀
+
+Nejjednodušší způsob, jak začít doplněk používat, je přes tento konfigurační odkaz:
+[**Nainstalovat Titulky.com Addon**](https://a5911a1ceea0-stremio-premium-czsubs.baby-beamup.club/configure)
+
+1. Otevřete odkaz výše.
+2. Zadejte své přihlašovací údaje z portálu premium.titulky.com.
+3. Klikněte na vytvoření odkazu a otevřete jej v aplikaci Stremio.
 
 ## Development & Testing 👨‍💻
 
