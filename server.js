@@ -10,10 +10,10 @@ const PORT = process.env.PORT || 7000;
 
 const manifest = {
     id: 'com.titulky.stremio-addon.static-test',
-    version: '1.0.1',
-    name: 'Titulky.com (Testovací verze)',
+    version: '1.0.0',
+    name: 'Titulky.com',
     description: 'Vyhledávání českých a slovenských titulků na serveru Titulky.com.',
-    logo: 'https://www.titulky.com/favicon-tecko.ico',
+    logo: '/media/logo_t.png',
     resources: ['subtitles'],
     types: ['movie', 'series'],
     catalogs: [],
@@ -113,6 +113,8 @@ builder.defineSubtitlesHandler(async (args) => {
 });
 
 const app = express();
+
+app.use('/media', express.static(path.join(__dirname, 'media')));
 
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
