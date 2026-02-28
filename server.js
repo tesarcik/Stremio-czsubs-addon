@@ -126,10 +126,12 @@ app.use((req, res, next) => {
     const host = req.get('host');
     const proto = req.headers['x-forwarded-proto'] || req.protocol;
 
-    // Pokud hostitel obsahuje "baby-beamup.club", použijeme ho. 
-    // Pokud je to to divné ID "a5911...", přepíšeme ho na správnou subdoménu.
+    // Tady natvrdo definujeme TVOU správnou veřejnou adresu
+    const beamupHost = 'a5911a1ceea0-stremio-premium-czsubs.baby-beamup.club';
+
     if (host.includes('baby-beamup.club') || host.includes('a5911a1ceea0')) {
-        dynamicBaseUrl = `${proto}://a5911a1ceea0-stremio-premium-czsubs.baby-beamup.club`;
+        // Tady MUSÍ být celá adresa i s tou koncovkou .club
+        dynamicBaseUrl = `https://${beamupHost}`;
     } else {
         dynamicBaseUrl = `${proto}://${host}`;
     }
