@@ -88,15 +88,37 @@
             const pass = document.getElementById('password').value;
             // Decode the current URL path to get the base domain
             const urlPath = window.location.pathname.replace('/configure', '');
-            const baseUrl = window.location.origin + urlPath;
 
-            // Format for Stremio: /username=x|password=y/manifest.json
-            const configString = `username=${encodeURIComponent(user)}|password=${encodeURIComponent(pass)}`;
-            const manifestUrl = `${baseUrl}/${configString}/manifest.json`;
+            // Format for Stremio MUST be URL-encoded JSON object
+            const configObj = { username: user, password: pass };
+            const configString = encodeURIComponent(JSON.stringify(configObj));
 
-            // Redirect using the Stremio protocol
-            const stremioUrl = manifestUrl.replace('https://', 'stremio://').replace('http://', 'stremio://');
-            window.location.href = stremioUrl;
+            // Build the URL carefully
+            const host = window.location.host; // includes port
+            const protocol = window.location.protocol; // http:
+
+            let manifestUrl = `${protocol}//${host}${urlPath}/${configString}/manifest.json`;
+            manifestUrl = manifestUrl.replace(/([^:])\/\//g, '$1/');
+
+            // Create a result div
+            let resultDiv = document.getElementById('result');
+            if (!resultDiv) {
+                resultDiv = document.createElement('div');
+                resultDiv.id = 'result';
+                resultDiv.style.marginTop = '20px';
+                resultDiv.style.padding = '15px';
+                resultDiv.style.backgroundColor = '#eef';
+                resultDiv.style.borderRadius = '5px';
+                resultDiv.style.border = '1px solid #ccd';
+                document.querySelector('.container').appendChild(resultDiv);
+            }
+
+            resultDiv.innerHTML = `
+                <p style="color: #333; font-weight: bold; margin-bottom: 5px;">Úspěch! Zkopírujte tento odkaz:</p>
+                <input type="text" value="${manifestUrl}" id="manifestLink" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" readonly>
+                <p style="color: #666; font-size: 13px; margin-top: 10px;">Otevřete aplikaci <b>Stremio</b>, přejděte do sekce <b>Addons</b> a do vyhledávacího pole (Addon URL) vložte tento odkaz k instalaci doplňku.</p>
+                <button type="button" onclick="document.getElementById('manifestLink').select(); document.execCommand('copy'); alert('Zkopírováno do schránky!');" style="width: 100%; padding: 10px; margin-top: 10px; background-color: #555; color: white; border: none; border-radius: 4px; cursor: pointer;">Kopírovat odkaz</button>
+            `;
         });
     </script>
 </body>

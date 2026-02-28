@@ -43,6 +43,7 @@ const builder = new addonBuilder(manifest);
 builder.defineSubtitlesHandler(async (args) => {
     console.log('\n--- (1) POŽADAVEK NA SEZNAM TITULKŮ ---');
     console.log('Přijata data od Stremia:', args.id);
+    console.log('Celé args:', JSON.stringify(args));
 
     if (!args.config || !args.config.username || !args.config.password) {
         console.log('Chybí konfigurace. Uživatel musí zadat jméno a heslo.');
