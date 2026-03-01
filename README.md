@@ -32,16 +32,16 @@ This addon is designed to be deployed on a public server to provide a stable HTT
 
 Follow these steps if you want to run the addon locally or contribute to its development.
 
-1. Prerequisites for local hosting of addon
+1. Prerequisites for local hosting of addon:
 
 * [Node.js](https://nodejs.org/) (which includes npm)
 * [Stremio Desktop App](https://www.stremio.com/downloads)
 
-2. Clone repo to your local device and open in your preffered IDE
+2. Clone repo to your local device and open in your preferred IDE.
 
-3. run "npm start" in your terminal, set credentials in config page and open Stremio app
+3. Run "npm start" in your terminal, set credentials in config page and open Stremio app.
 
-4. Enjoy scrapping subs for your favourite TV show/Movie
+4. Enjoy scrapping subs for your favourite TV show/Movie.
 
 
 ## Disclaimer ⚠️
@@ -49,6 +49,7 @@ Follow these steps if you want to run the addon locally or contribute to its dev
 * This is an **unofficial, community-driven project** and is not affiliated with the operators of Titulky.com in any way.
 * Use this addon at your **own risk**.
 * The author assumes no responsibility for your credentials or any issues that may arise from using this software.
+
 
 
 
