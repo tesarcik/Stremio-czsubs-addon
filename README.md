@@ -16,6 +16,7 @@ A simple Stremio addon that integrates subtitle streaming from the popular Czech
 ## Installation 🚀
 
 Use configuration link, redirect to baby beamup public hosting of the addon:
+
 https://a5911a1ceea0-stremio-premium-czsubs.baby-beamup.club/configure
 
 1. Open link
@@ -49,6 +50,7 @@ Follow these steps if you want to run the addon locally or contribute to its dev
 * This is an **unofficial, community-driven project** and is not affiliated with the operators of Titulky.com in any way.
 * Use this addon at your **own risk**.
 * The author assumes no responsibility for your credentials or any issues that may arise from using this software.
+
 
 
 
