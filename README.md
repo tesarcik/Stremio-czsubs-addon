@@ -6,7 +6,7 @@ A simple Stremio addon that integrates subtitle streaming from the popular Czech
 
 
 
-## Features 🚀
+## Features 📄
 
 * Search for subtitles for movies and series directly within the Stremio interface.
 * Supports both Czech and Slovak subtitles.
@@ -22,25 +22,33 @@ Use configuration link:
 2. Put in credentials from your premium titulky account.
 3. Submit credentials - Stremio app should pen automatically.
 
-## Development & Testing 👨‍💻
-
-Follow these steps if you want to run the addon locally or contribute to its development.
-
 
 ## Deployment ☁️
 
 This addon is designed to be deployed on a public server to provide a stable HTTPS endpoint. The recommended way is to use Beamup, a free hosting service for Stremio addons.
 
 
-## Prerequisites for local hosting of addon
+## Development & Testing 👨‍💻
+
+Follow these steps if you want to run the addon locally or contribute to its development.
+
+### 1. Prerequisites for local hosting of addon
 
 * [Node.js](https://nodejs.org/) (which includes npm)
 * [Stremio Desktop App](https://www.stremio.com/downloads)
+
+### 2. Clone repo to your local device and open in your preffered IDE
+
+### 3. run "npm start" in your terminal, set credentials in config page and open Stremio app
+
+### 4. Enjoy scrapping subs for your favourite TV show/Movie
+
 
 ## Disclaimer ⚠️
 
 * This is an **unofficial, community-driven project** and is not affiliated with the operators of Titulky.com in any way.
 * Use this addon at your **own risk**.
 * The author assumes no responsibility for your credentials or any issues that may arise from using this software.
+
 
 
