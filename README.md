@@ -2,7 +2,7 @@
 
 # Titulky.com Addon for Stremio
 
-A simple Stremio addon that integrates subtitle streaming from the popular Czech website [Titulky.com](https://www.titulky.com/). This addon requires your Titulky.com account credentials for full functionality.
+A simple Stremio addon that integrates subtitle streaming from the popular Czech website [Titulky.com](https://www.titulky.com/). This addon requires your Titulky.com PREMIUM account credentials for full functionality.
 
 
 
@@ -45,3 +45,4 @@ This addon is designed to be deployed on a public server to provide a stable HTT
 * This is an **unofficial, community-driven project** and is not affiliated with the operators of Titulky.com in any way.
 * Use this addon at your **own risk**.
 * The author assumes no responsibility for your credentials or any issues that may arise from using this software.
+
