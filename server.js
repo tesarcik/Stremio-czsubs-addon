@@ -44,7 +44,7 @@ let dynamicBaseUrl = `http://127.0.0.1:${PORT}`;
 builder.defineSubtitlesHandler(async (args) => {
     console.log(`[SUBTITLES REQUEST] type: ${args.type}, id: ${args.id}`);
     if (!args.config || !args.config.username || !args.config.password) {
-        console.log(`[SUBTITLES] Chybí konfigurace přihlašovacích údajů`);
+        console.log(`[SUBTITLES] Missing login credentials in config`);
         return { subtitles: [] };
     }
     const config = { username: args.config.username, password: args.config.password };
@@ -61,7 +61,7 @@ builder.defineSubtitlesHandler(async (args) => {
         }
 
         const cookies = await titulky.login(config);
-        if (!cookies) { throw new Error('Přihlášení selhalo'); }
+        if (!cookies) { throw new Error('Login failed'); }
 
         const [searchHtmlCZ, searchHtmlSK] = await Promise.all([
             titulky.searchForSubtitles(searchQuery, 'CZ', cookies),
@@ -98,10 +98,10 @@ builder.defineSubtitlesHandler(async (args) => {
         processHtml(searchHtmlCZ, 'ces');
         processHtml(searchHtmlSK, 'slk');
 
-        console.log(`[SUBTITLES FOUND] Nalezeno titulků: ${subtitles.length}`);
+        console.log(`[SUBTITLES FOUND] Found ${subtitles.length} subtitle(s)`);
         return { subtitles };
     } catch (error) {
-        console.error('!!! CHYBA V SUBTITLES HANDLERU !!!', error.message);
+        console.error('[SUBTITLES ERROR]', error.message);
         return { subtitles: [] };
     }
 });
@@ -152,10 +152,10 @@ app.get('/download/:username/:password/:detailUrl', async (req, res) => {
             password: decodeURIComponent(req.params.password)
         };
         const cookies = await titulky.login(userConfig);
-        if (!cookies) { throw new Error('Přihlášení selhalo před stažením'); }
+        if (!cookies) { throw new Error('Login failed before download'); }
 
         const subtitleStream = await titulky.getSubtitleStream(decodeURIComponent(req.params.detailUrl), cookies);
-        if (!subtitleStream) { throw new Error('Funkce getSubtitleStream nevrátila stream'); }
+        if (!subtitleStream) { throw new Error('getSubtitleStream returned no stream'); }
 
         res.setHeader('Content-Type', 'application/x-subrip');
 
@@ -172,10 +172,10 @@ app.get('/download/:username/:password/:detailUrl', async (req, res) => {
                 }
             })
             .on('error', (err) => {
-                if (!res.headersSent) res.status(500).send('Chyba při rozbalování ZIPu');
+                if (!res.headersSent) res.status(500).send('Error extracting ZIP archive');
             });
     } catch (e) {
-        res.status(500).send('Chyba na straně serveru');
+        res.status(500).send('Internal server error');
     }
 });
 
@@ -183,5 +183,5 @@ const router = getRouter(builder.getInterface());
 app.use(router);
 
 app.listen(PORT, () => {
-    console.log(`Server běží na portu ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });

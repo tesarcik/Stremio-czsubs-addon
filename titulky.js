@@ -31,9 +31,9 @@ async function login(credentials) {
         if (response.headers['set-cookie']) {
             return response.headers['set-cookie'];
         }
-        throw new Error('Server nevrátil cookies.');
+        throw new Error('Server did not return cookies.');
     } catch (error) {
-        console.error('[LOGIN] CHYBA:', error.message);
+        console.error('[LOGIN] ERROR:', error.message);
         return null;
     }
 }
@@ -49,7 +49,7 @@ async function searchForSubtitles(title, langFilter, cookies) {
         });
         return response.data;
     } catch (error) {
-        console.error('[SEARCH] CHYBA:', error.message);
+        console.error('[SEARCH] ERROR:', error.message);
         return null;
     }
 }
@@ -64,7 +64,7 @@ async function getSubtitleStream(detailPageUrl, cookies) {
         const urlParams = new URL(urlToCheck).searchParams;
         const id = urlParams.get('id');
 
-        if (!id) throw new Error('Nedokážu najít ID v odkazu detailu titulků');
+        if (!id) throw new Error('Cannot find ID in subtitle detail URL');
 
         const downloadUrl = `${baseUrl}download.php?id=${id}`;
 
@@ -84,10 +84,10 @@ async function getSubtitleStream(detailPageUrl, cookies) {
         if (fileResponse.headers['content-type'] && fileResponse.headers['content-type'].includes('zip')) {
             return fileResponse.data;
         } else {
-            throw new Error('Finální odpověď serveru nebyla ZIP soubor (např. chyba prémiového limitu?).');
+            throw new Error('Server response was not a ZIP file (e.g. premium limit error?).');
         }
     } catch (error) {
-        console.error(`[DOWNLOAD] CHYBA v procesu stahování: ${error.message}`);
+        console.error(`[DOWNLOAD] ERROR during download process: ${error.message}`);
         return null;
     }
 }
