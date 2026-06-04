@@ -40,7 +40,7 @@ async function login(credentials) {
 
 async function searchForSubtitles(title, langFilter, cookies) {
     try {
-        const searchUrl = `${baseUrl}?action=search&Fulltext=${encodeURIComponent(title)}&Jazyk=${langFilter}&fsf=1`;
+        const searchUrl = `${baseUrl}?action=search&Fulltext=${encodeURIComponent(title)}&Jazyk=${langFilter}`;
         const response = await axios.get(searchUrl, {
             headers: {
                 ...browserHeaders,

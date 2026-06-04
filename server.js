@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 7000;
 
 const manifest = {
     id: 'com.titulky.stremio-addon.v1.0.0',
-    version: '1.1.0',
+    version: '1.0.0',
     name: 'Premium Titulky.com',
     description: 'Vyhledávání českých a slovenských titulků na serveru premium.titulky.com.',
     logo: 'https://a5911a1ceea0-stremio-premium-czsubs.baby-beamup.club/media/logo_t.png',
@@ -77,11 +77,10 @@ builder.defineSubtitlesHandler(async (args) => {
                 const linkElement = row.find('td:nth-child(2) a');
                 if (linkElement.length > 0) {
                     const detailUrl = linkElement.attr('href');
-                    const stopwords = ['the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with', 'by'];
-                    const titleWords = titleSimple.split(' ').filter(w => !stopwords.includes(w));
-                    const matchWord = titleWords.length > 0 ? titleWords[0] : titleSimple.split(' ')[0];
+                    const linkText = linkElement.text().toLowerCase().trim();
+                    const titleSimple = searchQuery.toLowerCase().trim();
 
-                    if (linkText.includes(matchWord)) {
+                    if (linkText.includes(titleSimple.split(' ')[0])) {
                         subtitles.push({
                             id: detailUrl,
                             lang: langCode,
