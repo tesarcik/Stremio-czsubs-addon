@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 7000;
 
 const manifest = {
     id: 'com.titulky.stremio-addon.v1.0.0',
-    version: '1.0.0',
+    version: '1.1.0',
     name: 'Premium Titulky.com',
     description: 'Vyhledávání českých a slovenských titulků na serveru premium.titulky.com.',
     logo: 'https://a5911a1ceea0-stremio-premium-czsubs.baby-beamup.club/media/logo_t.png',
@@ -42,8 +42,9 @@ const builder = new addonBuilder(manifest);
 let dynamicBaseUrl = `http://127.0.0.1:${PORT}`;
 
 builder.defineSubtitlesHandler(async (args) => {
-
+    console.log(`[SUBTITLES REQUEST] type: ${args.type}, id: ${args.id}`);
     if (!args.config || !args.config.username || !args.config.password) {
+        console.log(`[SUBTITLES] Chybí konfigurace přihlašovacích údajů`);
         return { subtitles: [] };
     }
     const config = { username: args.config.username, password: args.config.password };
@@ -79,8 +80,11 @@ builder.defineSubtitlesHandler(async (args) => {
                     const detailUrl = linkElement.attr('href');
                     const linkText = linkElement.text().toLowerCase().trim();
                     const titleSimple = searchQuery.toLowerCase().trim();
+                    const stopwords = ['the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with', 'by'];
+                    const titleWords = titleSimple.split(' ').filter(w => !stopwords.includes(w));
+                    const matchWord = titleWords.length > 0 ? titleWords[0] : titleSimple.split(' ')[0];
 
-                    if (linkText.includes(titleSimple.split(' ')[0])) {
+                    if (linkText.includes(matchWord)) {
                         subtitles.push({
                             id: detailUrl,
                             lang: langCode,
@@ -94,6 +98,7 @@ builder.defineSubtitlesHandler(async (args) => {
         processHtml(searchHtmlCZ, 'ces');
         processHtml(searchHtmlSK, 'slk');
 
+        console.log(`[SUBTITLES FOUND] Nalezeno titulků: ${subtitles.length}`);
         return { subtitles };
     } catch (error) {
         console.error('!!! CHYBA V SUBTITLES HANDLERU !!!', error.message);
@@ -106,6 +111,7 @@ const app = express();
 app.use('/media', express.static(path.join(__dirname, 'media')));
 
 app.use((req, res, next) => {
+    console.log(`[HTTP REQUEST] ${req.method} ${req.url}`);
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
