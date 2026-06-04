@@ -77,10 +77,11 @@ builder.defineSubtitlesHandler(async (args) => {
                 const linkElement = row.find('td:nth-child(2) a');
                 if (linkElement.length > 0) {
                     const detailUrl = linkElement.attr('href');
-                    const linkText = linkElement.text().toLowerCase().trim();
-                    const titleSimple = searchQuery.toLowerCase().trim();
+                    const stopwords = ['the', 'a', 'an', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with', 'by'];
+                    const titleWords = titleSimple.split(' ').filter(w => !stopwords.includes(w));
+                    const matchWord = titleWords.length > 0 ? titleWords[0] : titleSimple.split(' ')[0];
 
-                    if (linkText.includes(titleSimple.split(' ')[0])) {
+                    if (linkText.includes(matchWord)) {
                         subtitles.push({
                             id: detailUrl,
                             lang: langCode,
